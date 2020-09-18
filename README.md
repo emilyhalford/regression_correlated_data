@@ -1,5 +1,5 @@
 # regression_correlated_data
-Code and selected data associated with my 09.16.20 'Towards Data Science' article (https://towardsdatascience.com/using-regression-with-correlated-data-5845a2eed3d2) on using Generalized Estimating Equations and Multilevel Modeling with correlated data. 
+Code and select data associated with my 09.16.20 'Towards Data Science' article (https://towardsdatascience.com/using-regression-with-correlated-data-5845a2eed3d2) on using Generalized Estimating Equations and Multilevel Modeling with correlated data. 
 
 Data from the WHO's Global School-Based Student Health Survey (GSHS) is included in the "data" folder. The file "IOH2007_public_use.sas7bdat" contains data from students in Indonesia, and the file "bdh2014_public_use.sas7bdat" contains data from students in Bangladesh. 
 
