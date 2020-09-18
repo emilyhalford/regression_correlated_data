@@ -1,0 +1,90 @@
+---
+title: "Fragile Families Data Cleaning and Analysis"
+author: "Emily Halford"
+date: "9/18/2020"
+output: html_document
+---
+
+## Loading Packages
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(haven)
+library(geepack)
+library(lme4)
+```
+
+## Loading and Cleaning
+
+The following code loads and cleans data from Years 9 and 15 of the Fragile Families study. Variables are given meaningful, consistent variable names, and are recoded in a binary fashion. A "time_order" variable is also created so that the data can be sorted properly in the analysis step. 
+
+```{r load_data}
+
+year_9 = read_sas("./data/FF_wave5_2020v2_SAS.sas7bdat") %>% 
+  select(idnum, k5g2g, k5f1l, k5f1j) %>% 
+  rename("feel_sad" = "k5g2g",
+         "tobacco" = "k5f1l",
+         "alcohol" = "k5f1j") %>% 
+  filter(
+    tobacco == 1 | tobacco == 2,
+    alcohol == 1 | alcohol == 2,
+    feel_sad == 0 | feel_sad == 1 | feel_sad == 2 | feel_sad == 3
+  ) %>% 
+  mutate(
+    tobacco = ifelse(tobacco == 1, 1, 0),
+    alcohol = ifelse(alcohol == 1, 1, 0),
+    feel_sad = ifelse(feel_sad == 0, 0, 1),
+    time_order = 1
+  )
+
+
+year_15 = read_sas("./data/FF_wave6_2020v2_SAS.sas7bdat") %>% 
+  select(idnum, k6d2n, k6d40, k6d48) %>% 
+  rename("feel_sad" = "k6d2n",
+         "tobacco" = "k6d40",
+         "alcohol" = "k6d48") %>% 
+  filter(
+    tobacco == 1 | tobacco == 2,
+    alcohol == 1 | alcohol == 2,
+    feel_sad == 1 | feel_sad == 2 | feel_sad == 3 | feel_sad == 4
+  ) %>% 
+  mutate(
+    tobacco = ifelse(tobacco == 1, 1, 0),
+    alcohol = ifelse(alcohol == 1, 1, 0),
+    feel_sad = ifelse(feel_sad == 4, 0, 1),
+    time_order = 2
+  )
+
+fragile_families = rbind(year_9, year_15) %>% 
+  mutate(
+    idnum = as.numeric(idnum)
+  )
+
+fragile_families = 
+  fragile_families[
+  with(fragile_families, order(idnum)),
+]
+
+```
+
+## Analysis
+
+The following code runs a simple logistic regression model (for comparative purposes), a generalized estimating equations model, and a multilevel model.
+
+```{r analysis}
+
+## Simple logistic regression
+glm(formula = feel_sad ~ tobacco + alcohol, family = binomial, data = fragile_families) %>% 
+  broom::tidy()
+
+## Generalized estimating equations
+geeglm(formula = feel_sad ~ tobacco + alcohol, family = binomial, id = idnum, data = fragile_families,
+       waves = time_order, corstr = "independence") %>% 
+  broom::tidy()
+
+## Multilevel modeling
+mlm = summary(glmer(formula = feel_sad ~ tobacco + alcohol + (1 | idnum), data = fragile_families, family = binomial)) 
+
+mlm$coefficients
+
+```

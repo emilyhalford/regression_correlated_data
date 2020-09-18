@@ -1,0 +1,79 @@
+---
+title: "Global School-Based Student Health Survey Data Cleaning and Analysis"
+author: "Emily Halford"
+date: "9/18/2020"
+output: html_document
+---
+
+## Loading Packages
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(haven)
+library(lme4)
+library(gee)
+```
+
+## Loading and Cleaning
+
+The following code loads and cleans data from students in Indonesia and Bangladesh that was collected as part of the WHO's Global School-Based Student Health Survey. Variables are given meaningful, consistent variable names, and are recoded in a binary fashion. A "country" variable is also created so that students' responses can be clustered by country in the analysis stage. 
+
+```{r load_data}
+
+indonesia = read_sas("./data/IOH2007_public_use.sas7bdat") %>% 
+  select(q21, q25, q27) %>% 
+  rename(
+    "bullied" = "q21",
+    "suicidal_thoughts" = "q25",
+    "friends" = "q27"
+  ) %>% 
+  mutate(
+    country = 1,
+  )
+
+bangladesh = read_sas("./data/bdh2014_public_use.sas7bdat") %>% 
+  select(q20, q24, q27) %>% 
+  rename(
+    "bullied" = "q20",
+    "suicidal_thoughts" = "q24",
+    "friends" = "q27"
+  ) %>% 
+  mutate(
+    country = 2
+  ) 
+
+survey = rbind(indonesia, bangladesh) %>% 
+  mutate(
+    suicidal_thoughts = as.numeric(suicidal_thoughts),
+    friends = as.numeric(friends),
+    bullied = as.numeric(bullied),
+    suicidal_thoughts = ifelse(suicidal_thoughts == 1, 1, 0),
+    friends = ifelse(friends == 1, 0, 1),
+    bullied = ifelse(bullied == 1, 0, 1)
+  ) %>% 
+  drop_na()
+
+```
+
+## Analysis
+
+The following code runs a simple logistic regression model (for comparative purposes), a generalized estimating equations model, and a multilevel model.
+
+```{r analysis}
+
+## Simple logistic regression
+glm(formula = suicidal_thoughts ~ bullied + friends, family = binomial, data = survey) %>% 
+  broom::tidy()
+
+## Generalized estimating equations
+gee = gee(suicidal_thoughts ~ bullied + friends, data = survey, id = country, family = binomial, corstr = "independence")
+
+summary(gee)
+
+## Multilevel modeling
+mlm = summary(glmer(formula = suicidal_thoughts ~ bullied + friends + (1 | country), data = survey, family = binomial)) 
+
+mlm$coefficients
+
+```
+
